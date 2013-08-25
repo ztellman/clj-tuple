@@ -1,5 +1,5 @@
-(defproject clj-tuple "0.1.0-SNAPSHOT"
-  :description "Highly efficient containers for small numbers of elements."
+(defproject clj-tuple "0.1.0"
+  :description "Efficient small collections."
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies []

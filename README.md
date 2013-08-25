@@ -1,14 +1,19 @@
-# clj-tuple
+Often the lists we create have only a few elements in them.  This library exposes a collection type, `tuple`, which is optimized for lists with six or fewer elements.
 
-A Clojure library designed to ... well, that part is up to you.
+Compared lists and vectors, 2-tuple is ~2-3x faster to create, destructure, calculate a hash, check for equality, and look up in a normal Java hash-map.  Some of these changes are amplified at larger sizes; a 5-tuple is 20x faster to create than a five element vector.
 
 ## Usage
 
-FIXME
+```clj
+[clj-tuple "0.1.0"]
+```
 
-## License
+```clj
+clj-tuple> (tuple 1 2 3)
+(1 2 3)
 
-Copyright © 2013 FIXME
+## license
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2013 Zachary Tellman
+
+Distributed under the MIT License

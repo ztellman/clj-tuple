@@ -1,4 +1,6 @@
 (ns clj-tuple
+  (:require
+    [clojure.core.protocols :as p])
   (:import
     [clojure.lang
      Util]
@@ -58,33 +60,76 @@
                  (range cardinality))
         other (with-meta `x## {:tag (str name)})]
     (unify-gensyms
-      `(deftype ~name [~@fields ~(with-meta 'rst {:unsynchronized-mutable true})]
+      `(deftype ~name [~@fields mta#]
+
+         clojure.lang.IObj
+         (meta [_] mta#)
+         (withMeta [_ m#] (new ~name ~@fields m#))
+
+         java.util.Collection
+
+         (isEmpty [_] ~(zero? cardinality))
+         (iterator [_]
+           (let [^Collection l# (list ~@fields)]
+             (.iterator l#)))
+         (toArray [_]
+           (let [ary## (object-array ~cardinality)]
+             ~@(map
+                 (fn [idx field] `(aset ary## ~idx ~field))
+                 (range)
+                 fields)
+             ary##))
+
+         p/InternalReduce
+         (internal-reduce [_ f## start##]
+           ~(if (zero? cardinality)
+              `(f## start##)
+              (reduce
+                (fn [form field]
+                  `(f## ~form ~field))
+                `start##
+                fields)))
+
+         p/CollReduce
+         (coll-reduce [_ f##]
+           ~(if (zero? cardinality)
+              `(f##)
+              (reduce
+                (fn [form field]
+                  `(f## ~form ~field))
+                (first fields)
+                (rest fields))))
+         (coll-reduce [_ f## start##]
+           ~(if (zero? cardinality)
+              `(f## start##)
+              (reduce
+                (fn [form field]
+                  `(f## ~form ~field))
+                `start##
+                fields)))
+
          clojure.lang.IPersistentCollection
          clojure.lang.Indexed
          clojure.lang.Sequential
          clojure.lang.ISeq
          clojure.lang.Seqable
-         java.util.RandomAccess
 
-         (first [_#]
+         (first [_]
            ~(first fields))
-         (next [_#]
+         (next [this##]
            ~(when (> cardinality 1)
-              `(let [rst# ~'rst]
-                 (if (nil? rst#)
-                   (set! ~'rst (new ~dec-name ~@(rest fields) nil))
-                   rst#))))
+              `(new ~dec-name ~@(rest fields) nil)))
          (more [this##]
-           (if-let [rst# (seq (next this##))]
+           (if-let [rst# (next this##)]
              rst#
              '()))
-         (cons [_# x#]
+         (cons [_ x#]
            (list x# ~@fields))
          (seq [this##]
            ~(when-not (zero? cardinality)
               `this##))
          
-         (nth [_# idx# not-found#]
+         (nth [_ idx# not-found#]
            (case idx#
              ~@(mapcat
                  (fn [idx field]
@@ -92,7 +137,7 @@
                  (range)
                  fields)
              not-found#))
-         (nth [_# idx#]
+         (nth [_ idx#]
            (case idx#
              ~@(mapcat
                  (fn [idx field]
@@ -138,29 +183,29 @@
          (hashCode [_]
            ~(if (zero? cardinality)
               1
-              (reduce
-                (fn
-                  ([form]
-                     form)
-                  ([form x]
-                     `(+ (* 31 ~form) (Util/hash ~x))))
-                1
-                fields)))
-
-         ~@(let [{:keys [major minor]} *clojure-version*]
-             (when-not (and (= 1 major) (< minor 4))
-               `(clojure.lang.IHashEq
-                  (hasheq [_]
-                    ~(if (zero? cardinality)
-                       1
-                       (reduce
-                         (fn
-                           ([form]
-                              form)
-                           ([form x]
-                              `(+ (* 31 ~form) (Util/hasheq ~x))))
-                         1
-                         fields))))))))))
+              `(unchecked-int
+                 ~(reduce
+                    (fn
+                      ([form]
+                         form)
+                      ([form x]
+                         `(+ (* 31 ~form) (Util/hash ~x))))
+                    1
+                    fields))))
+         
+         clojure.lang.IHashEq
+         (hasheq [_]
+           ~(if (zero? cardinality)
+              1
+              `(unchecked-int
+                 ~(reduce
+                    (fn
+                      ([form]
+                         form)
+                      ([form x]
+                         `(+ (* 31 ~form) (Util/hasheq ~x))))
+                    1
+                    fields))))))))
 
 (defmacro ^:private def-tuple-n [name dec-name cardinality]
   (let [fields (map
@@ -168,28 +213,69 @@
                  (range cardinality))
         other (with-meta `x## {:tag (str name)})]
     (unify-gensyms
-      `(deftype ~name [~@fields ~(with-meta 'remainder {:tag "Collection"})]
+      `(deftype ~name [~@fields ~(with-meta 'remainder {:tag "Collection"}) mta#]
+
+         clojure.lang.IObj
+         (meta [_] mta#)
+         (withMeta [_ m#] (new ~name ~@fields ~'remainder m#))
+
+         java.util.Collection
+
+         (isEmpty [_] false)
+         (iterator [_]
+           (let [^Collection l# (list* ~@fields ~'remainder)]
+             (.iterator l#)))
+         (toArray [this##]
+           (into-array this##))
+
+          p/InternalReduce
+         (internal-reduce [_ f## start##]
+           (reduce f##
+             ~(reduce
+               (fn [form field]
+                 `(f## ~form ~field))
+               `start##
+               fields)
+             ~'remainder))
+
+         p/CollReduce
+         (coll-reduce [_ f##]
+           (reduce f##
+             ~(reduce
+                (fn [form field]
+                  `(f## ~form ~field))
+                (first fields)
+                (rest fields))
+             ~'remainder))
+         (coll-reduce [_ f## start##]
+           (reduce f##
+             ~(reduce
+                (fn [form field]
+                  `(f## ~form ~field))
+                `start##
+                fields)
+             ~'remainder))
+
          clojure.lang.IPersistentCollection
          clojure.lang.Indexed
          clojure.lang.Sequential
          clojure.lang.ISeq
-         java.util.RandomAccess
 
-         (first [_#]
+         (first [_]
            ~(first fields))
-         (next [_#]
+         (next [_]
            (let [remainder# (rest ~'remainder)]
              (if (empty? remainder#)
                (new ~dec-name ~@(rest fields) (first ~'remainder) nil)
-               (new ~name ~@(rest fields) (first ~'remainder) remainder#))))
+               (new ~name ~@(rest fields) (first ~'remainder) remainder# nil))))
          (more [this##]
            (next this##))
-         (cons [_# x#]
+         (cons [_ x#]
            (list* x# ~@fields ~'remainder))
          (seq [this##]
            this##)
          
-         (nth [_# idx# not-found#]
+         (nth [_ idx# not-found#]
            (case idx#
              ~@(mapcat
                  (fn [idx field]
@@ -197,7 +283,7 @@
                  (range)
                  fields)
              (nth ~'remainder (- idx# ~cardinality) not-found#)))
-         (nth [_# idx#]
+         (nth [_ idx#]
            (case idx#
              ~@(mapcat
                  (fn [idx field]
@@ -206,8 +292,8 @@
                  fields)
              (try
                (nth ~'remainder (- idx# ~cardinality))
-               (catch IndexOutOfBounds))
-             (throw (IndexOutOfBoundsException. (str idx#)))))
+               (catch IndexOutOfBoundsException _#
+                 (throw (IndexOutOfBoundsException. (str idx#)))))))
          
          (count [_] (+ ~cardinality (count ~'remainder)))
          
@@ -258,35 +344,35 @@
                  (recur (+ (* 31 hash#) (Util/hash (.next it#))))
                  (unchecked-int hash#)))))
          
-         ~@(let [{:keys [major minor]} *clojure-version*]
-             (when-not (and (= 1 major) (< minor 4))
-               `(clojure.lang.IHashEq
-                  (hasheq [_]
-                    (let [seed# ~(reduce
-                                   (fn
-                                     ([form]
-                                        form)
-                                     ([form x]
-                                        `(+ (* 31 ~form) (Util/hasheq ~x))))
-                                   1
-                                   fields)
-                          ^Iterator it# (.iterator ~'remainder)]
-                      (loop [hash# seed#]
-                        (if (.hasNext it#)
-                          (recur (+ (* 31 hash#) (Util/hasheq (.next it#))))
-                          (unchecked-int hash#))))))))))))
+         clojure.lang.IHashEq
+         (hasheq [_]
+           (let [seed# ~(reduce
+                          (fn
+                            ([form]
+                               form)
+                            ([form x]
+                               `(+ (* 31 ~form) (Util/hasheq ~x))))
+                          1
+                          fields)
+                 ^Iterator it# (.iterator ~'remainder)]
+             (loop [hash# seed#]
+               (if (.hasNext it#)
+                 (recur (+ (* 31 hash#) (Util/hasheq (.next it#))))
+                 (unchecked-int hash#)))))))))
 
 (def-tuple Tuple0 nil 0)
 (def-tuple Tuple1 Tuple0 1)
 (def-tuple Tuple2 Tuple1 2)
 (def-tuple Tuple3 Tuple2 3)
 (def-tuple Tuple4 Tuple3 4)
-(def-tuple-n TupleN Tuple4 4)
+(def-tuple Tuple5 Tuple4 5)
+(def-tuple Tuple6 Tuple5 6)
+(def-tuple-n TupleN Tuple6 6)
 
 (defn tuple
-  "Returns tuple structures that cannot be changed (even via immutable operators), which are highly efficient
-   for index lookups, hash calculation, and equality checks.  If the arity is greater than 4, defaults to
-   returning a list."
+  "Returns a tuple which behaves like a list, but is highly efficient for index lookups, hash
+   calculations, equality checks, and reduction.  If there are more than six elements, an
+   unbounded tuple is used which is comparable in performance to a normal list."
   ([]
      (Tuple0. nil))
   ([x]
@@ -297,5 +383,9 @@
      (Tuple3. x y z nil))
   ([x y z w]
      (Tuple4. x y z w nil))
-  ([x y z w & rst]
-     (TupleN. x y z w rst)))
+  ([x y z w u]
+     (Tuple5. x y z w u nil))
+  ([x y z w u v]
+     (Tuple6. x y z w u v nil))
+  ([x y z w u v & rst]
+     (TupleN. x y z w u v rst nil)))
