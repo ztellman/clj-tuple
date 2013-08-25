@@ -11,6 +11,7 @@ Compared lists and vectors, 2-tuple is ~2-3x faster to create, destructure, calc
 ```clj
 clj-tuple> (tuple 1 2 3)
 (1 2 3)
+```
 
 ## license
 
