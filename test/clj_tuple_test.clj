@@ -13,7 +13,10 @@
   (is (= a b))
   (is (= b a))
   (is (every? #(= (nth a %) (nth b %)) (range (count a))))
+  (when (instance? clojure.lang.PersistentVector a)
+    (is (every? #(= (a %) (b %)) (range (count a)))))
   (is (= (apply + b) (apply + a)))
+  (is (= (reduce + b) (reduce + a)))
   (is (.equals ^Object a b) (str (class a) (class b)))
   (is (.equals ^Object b a))
   (is (= (hash a) (hash b)))
@@ -25,7 +28,6 @@
   (let [seqs (map #(range %) (range 100))]
     (doseq [s seqs]
       (equivalent? (vec s) (apply tuple s))
-      (equivalent? s (apply tuple s))
       (equivalent? (apply tuple s) (apply tuple s)))))
 
 (defmacro do-benchmark [description bench-form-fn]

@@ -131,6 +131,16 @@
                      (throw (IndexOutOfBoundsException. (str (first args#)))))
                  (throw-arity cnt#))))
 
+           ~@(when (= 2 cardinality)
+               `(IMapEntry
+                  Map$Entry
+                  
+                  (key [_] ~(first fields))
+                  (getKey [_] ~(first fields))
+                  
+                  (val [_] ~(second fields))
+                  (getValue [_] ~(second fields))))
+
            clojure.lang.Associative
            clojure.lang.IPersistentVector
            (count [_] ~cardinality)
@@ -607,7 +617,9 @@
 (def-tuple Tuple2 Tuple1 2)
 (def-tuple Tuple3 Tuple2 3)
 (def-tuple Tuple4 Tuple3 4)
-(def-tuple-n TupleN Tuple4 4)
+(def-tuple Tuple5 Tuple4 5)
+(def-tuple Tuple6 Tuple5 6)
+(def-tuple-n TupleN Tuple6 6)
 
 (eval
   (unify-gensyms
@@ -624,7 +636,7 @@
                             (range idx))
                         x##
                         nil))))
-               (range 4)))))))
+               (range 6)))))))
 
 (defn tuple
   "Returns a tuple which behaves like a list, but is highly efficient for index lookups, hash
@@ -640,5 +652,9 @@
      (Tuple3. x y z nil))
   ([x y z w]
      (Tuple4. x y z w nil))
-  ([x y z w & rst]
-     (TupleN. x y z w rst nil)))
+  ([x y z w u]
+     (Tuple5. x y z w u nil))
+  ([x y z w u v]
+     (Tuple6. x y z w u v nil))
+  ([x y z w u v & rst]
+     (TupleN. x y z w u v rst nil)))
