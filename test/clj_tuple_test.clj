@@ -14,7 +14,7 @@
   (is (= b a))
   (is (every? #(= (nth a %) (nth b %)) (range (count a))))
   (is (= (apply + b) (apply + a)))
-  (is (.equals ^Object a b))
+  (is (.equals ^Object a b) (str (class a) (class b)))
   (is (.equals ^Object b a))
   (is (= (hash a) (hash b)))
   (is (= (first a) (first b)))
@@ -49,9 +49,7 @@
               "list 5"    '(list 1 2 3 4 5)
               "vector 5"  '(vector 1 2 3 4 5)
               "tuple 5"   '(tuple 1 2 3 4 5)
-              "list 7"    '(list 1 2 3 4 5 6 7)
-              "vector 7"  '(vector 1 2 3 4 5 6 7)
-              "tuple 7"   '(tuple 1 2 3 4 5 6 7)])))))
+              ])))))
 
 (deftest ^:benchmark benchmark-construction
   (do-benchmark "create" (fn [x] `(c/quick-bench ~x))))
@@ -62,12 +60,23 @@
 (deftest ^:benchmark benchmark-reduce
   (do-benchmark "reduce +" (fn [x] `(c/quick-bench (reduce + ~x)))))
 
-(deftest ^:benchmark benchmark-apply
-  (do-benchmark "apply"
+(deftest ^:benchmark benchmark-conj
+  (do-benchmark "conj" (fn [x] `(let [x# ~x] (c/quick-bench (conj x# 1))))))
+
+(deftest ^:benchmark benchmark-apply-variadic
+  (do-benchmark "apply variadic"
     (fn [x]
       `(let [f# (fn [& args#] args#)
              x# ~x]
          (c/quick-bench (apply f# x#))))))
+
+(deftest ^:benchmark benchmark-apply-fixed
+  (do-benchmark "apply fixed"
+    (fn [x]
+      (let [cnt (count (eval x))]
+        `(let [f# (fn [~@(repeatedly cnt gensym)] )
+               x# ~x]
+           (c/quick-bench (apply f# x#)))))))
 
 (deftest ^:benchmark benchmark-seq
   (do-benchmark "seq"
