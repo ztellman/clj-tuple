@@ -14,7 +14,9 @@
   (is (= b a))
   (is (every? #(= (nth a %) (nth b %)) (range (count a))))
   (when (instance? clojure.lang.PersistentVector a)
-    (is (every? #(= (a %) (b %)) (range (count a)))))
+    (is (every? #(= (a %) (b %)) (range (count a))))
+    (is (every? #(= (get a %) (get b %)) (range (inc (count a)))))
+    (is (= 0 (compare a b))))
   (is (= (apply + b) (apply + a)))
   (is (= (reduce + b) (reduce + a)))
   (is (.equals ^Object a b) (str (class a) (class b)))
@@ -25,7 +27,7 @@
     (equivalent? (rest a) (rest b))))
 
 (deftest test-equivalency
-  (let [seqs (map #(range %) (range 100))]
+  (let [seqs (map #(range %) (range 10))]
     (doseq [s seqs]
       (equivalent? (vec s) (apply tuple s))
       (equivalent? (apply tuple s) (apply tuple s)))))
@@ -51,6 +53,9 @@
               "list 5"    '(list 1 2 3 4 5)
               "vector 5"  '(vector 1 2 3 4 5)
               "tuple 5"   '(tuple 1 2 3 4 5)
+              "list 7"    '(list 1 2 3 4 5 6 7)
+              "vector 7"  '(vector 1 2 3 4 5 6 7)
+              "tuple 7"   '(tuple 1 2 3 4 5 6 7)
               ])))))
 
 (deftest ^:benchmark benchmark-construction
@@ -79,6 +84,14 @@
         `(let [f# (fn [~@(repeatedly cnt gensym)] )
                x# ~x]
            (c/quick-bench (apply f# x#)))))))
+
+(deftest ^:benchmark benchmark-compare
+  (do-benchmark "compare"
+    (fn [x]
+      `(let [a# ~x
+             b# ~x]
+         (when-not (list? a#)
+           (c/quick-bench (compare a# b#)))))))
 
 (deftest ^:benchmark benchmark-seq
   (do-benchmark "seq"
