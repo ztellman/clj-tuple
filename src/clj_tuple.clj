@@ -74,7 +74,7 @@
         (Util/equals k (.getKey ^Map$Entry x))
         (Util/equals v (.getValue ^Map$Entry x))))))
 
-(declare conj-tuple)
+(declare conj-tuple tuple)
 
 (defn- throw-arity [actual]
   (throw
@@ -198,6 +198,7 @@
            clojure.lang.ISeq
            clojure.lang.Seqable
 
+           (empty [_] (tuple))
            (first [_]
              ~(first fields))
            (next [this##]

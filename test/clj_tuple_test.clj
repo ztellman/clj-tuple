@@ -14,6 +14,8 @@
   (is (= b a))
   (is (every? #(= (nth a %) (nth b %)) (range (count a))))
   (when (instance? clojure.lang.PersistentVector a)
+    (when-not (empty? a)
+      (is (= (into (empty a) a) (into (empty b) b) a b)))
     (is (every? #(= (a %) (b %)) (range (count a))))
     (is (every? #(= (get a %) (get b %)) (range (inc (count a)))))
     (is (= 0 (compare a b))))
@@ -69,6 +71,16 @@
 
 (deftest ^:benchmark benchmark-conj
   (do-benchmark "conj" (fn [x] `(let [x# ~x] (c/quick-bench (conj x# 1))))))
+
+(deftest ^:benchmark benchmark-nth
+  (do-benchmark "nth"
+    (fn [x]
+      `(let [idx# (dec (count ~x))
+             x# ~x]
+         (c/quick-bench (nth x# idx#))))))
+
+(deftest ^:benchmark benchmark-first
+  (do-benchmark "first" (fn [x] `(let [x# ~x] (c/quick-bench (first x#))))))
 
 (deftest ^:benchmark benchmark-apply-variadic
   (do-benchmark "apply variadic"
