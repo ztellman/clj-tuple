@@ -1,4 +1,4 @@
-(defproject clj-tuple "0.1.2"
+(defproject clj-tuple "0.1.3-SNAPSHOT"
   :description "Efficient small collections."
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
