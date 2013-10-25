@@ -235,7 +235,9 @@
                          (fn [f]
                            `(Util/equiv ~f (. ~other ~f)))
                          fields)))
-               (and (== ~cardinality (count x##))
+               (and
+                 (sequential? x##)
+                 (== ~cardinality (count x##))
                  (Util/equiv x## this#))))
            
            (equals [this# x##]
@@ -247,7 +249,9 @@
                          (fn [f]
                            `(Util/equals ~f (. ~other ~f)))
                          fields)))
-               (and (== ~cardinality (count x##))
+               (and
+                 (sequential? x##)
+                 (== ~cardinality (count x##))
                  (Util/equals x## this#))))
 
            Comparable
