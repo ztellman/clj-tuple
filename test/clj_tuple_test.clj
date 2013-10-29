@@ -2,37 +2,17 @@
   (:require
     [clojure.test :refer :all]
     [clj-tuple :refer :all]
-    [criterium.core :as c])
+    [criterium.core :as c]
+    [collection-check :as check]
+    [simple-check.generators :as gen])
   (:import
     [java.util.concurrent
      ConcurrentHashMap]
     [java.util
      HashMap]))
 
-(defn equivalent? [a b]
-  (is (= a b))
-  (is (= b a))
-  (is (every? #(= (nth a %) (nth b %)) (range (count a))))
-  (when (instance? clojure.lang.PersistentVector a)
-    (when-not (empty? a)
-      (is (= (into (empty a) a) (into (empty b) b) a b)))
-    (is (every? #(= (a %) (b %)) (range (count a))))
-    (is (every? #(= (get a %) (get b %)) (range (inc (count a)))))
-    (is (= 0 (compare a b))))
-  (is (= (apply + b) (apply + a)))
-  (is (= (reduce + b) (reduce + a)))
-  (is (.equals ^Object a b) (str (class a) (class b)))
-  (is (.equals ^Object b a))
-  (is (= (hash a) (hash b)))
-  (is (= (first a) (first b)))
-  (when-not (empty? a)
-    (equivalent? (rest a) (rest b))))
-
 (deftest test-equivalency
-  (let [seqs (map #(range %) (range 10))]
-    (doseq [s seqs]
-      (equivalent? (vec s) (apply tuple s))
-      (equivalent? (apply tuple s) (apply tuple s)))))
+  (check/assert-vector-like 1e4 (tuple) gen/int))
 
 (defmacro do-benchmark [description bench-form-fn]
   (let [bench-form-fn (eval bench-form-fn)]

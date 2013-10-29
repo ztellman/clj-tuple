@@ -4,8 +4,10 @@
   (:import
     [clojure.lang
      Util
-     IMapEntry]
+     IMapEntry
+     MapEntry]
     [java.util
+     List
      Map$Entry
      Iterator
      Collection]))
@@ -50,29 +52,11 @@
   (let [gensym* (memoize gensym)]
     (postwalk
       #(if (unified-gensym? %)
-         (symbol (str (gensym* (str (un-gensym %) "__")) "__auto__"))
+         (symbol (str (gensym* (str (un-gensym %) "__")) "__unified__"))
          %)
       body)))
 
 ;;;
-
-(defn map-entry [k v]
-  (reify
-    IMapEntry
-    Map$Entry
-    
-    (key [_] k)
-    (getKey [_] k)
-
-     (val [_] v)
-    (getValue [_] v)
-    
-    (hashCode [_]
-      (bit-xor (Util/hash k) (Util/hash v)))
-    (equals [_ x]
-      (and (instance? Map$Entry x)
-        (Util/equals k (.getKey ^Map$Entry x))
-        (Util/equals v (.getValue ^Map$Entry x))))))
 
 (declare conj-tuple tuple)
 
@@ -145,6 +129,14 @@
                   (val [_] ~(second fields))
                   (getValue [_] ~(second fields))))
 
+           clojure.lang.IEditableCollection
+           (asTransient [_]
+             (-> []
+               transient
+               ~@(map
+                   (fn [x] `(conj! ~x))
+                   fields)))
+
            clojure.lang.Associative
            clojure.lang.IPersistentVector
            (count [_] ~cardinality)
@@ -158,24 +150,24 @@
                    (<= 0 k## ~(dec cardinality)))))
            (entryAt [_ k##]
              (let [v# ~(lookup `(int k##))]
-               (map-entry k## v#)))
+               (MapEntry. k## v#)))
            (assoc [this# k# v##]
              (case (int k#)
                ~@(mapcat
                    (fn [idx field]
-                     `(~idx (new ~name ~@(-> fields vec (assoc idx `v##)) `mta##)))
+                     `(~idx (new ~name ~@(-> fields vec (assoc idx `v##)) mta##)))
                    (range)
                    fields)
-               ~cardinality (.cons this# v##)
+               ~cardinality (conj-tuple this# v##)
                (throw (IndexOutOfBoundsException. (str k#)))))
            (assocN [this# k# v##]
              (case k#
                ~@(mapcat
                    (fn [idx field]
-                     `(~idx (new ~name ~@(-> fields vec (assoc idx `v##)) `mta##)))
+                     `(~idx (new ~name ~@(-> fields vec (assoc idx `v##)) mta##)))
                    (range)
                    fields)
-               ~cardinality (.cons this# v##)
+               ~cardinality (conj-tuple this# v##)
                (throw (IndexOutOfBoundsException. (str k#)))))
 
            java.util.Collection
@@ -197,13 +189,15 @@
            clojure.lang.Sequential
            clojure.lang.ISeq
            clojure.lang.Seqable
+           java.util.List
 
-           (empty [_] (tuple))
+           (empty [_]
+             (tuple))
            (first [_]
              ~(first fields))
            (next [this##]
              ~(when (> cardinality 1)
-                `(new ~dec-name ~@(rest fields) nil)))
+                `(new ~dec-name ~@(rest fields) mta##)))
            (more [this##]
              (if-let [rst# (next this##)]
                rst#
@@ -213,10 +207,11 @@
            (peek [_]
              ~(last fields))
            (pop [_]
-             ~(when (> cardinality 1)
-                `(new ~dec-name ~@(butlast fields) nil)))
+             ~(if (zero? cardinality)
+                `(throw (IllegalArgumentException. "Cannot pop from an empty vector."))
+                `(new ~dec-name ~@(butlast fields) mta##)))
            (rseq [_]
-             (new ~name ~@(reverse fields) nil))
+             (new ~name ~@(reverse fields) mta##))
            (seq [this##]
              ~(when-not (zero? cardinality)
                 `this##))
@@ -224,6 +219,8 @@
            (nth [_ idx## not-found##]
              ~(lookup `idx## `not-found##))
            (nth [_ idx##]
+             ~(lookup `idx##))
+           (get [_ idx##]
              ~(lookup `idx##))
            
            (equiv [this# x##]
@@ -300,34 +297,32 @@
                       1
                       fields))))
 
-           p/InternalReduce
-           (internal-reduce [_ f## start##]
-             ~(if (zero? cardinality)
-                `(f## start##)
-                (reduce
-                  (fn [form field]
-                    `(f## ~form ~field))
-                  `start##
-                  fields)))
-
-           p/CollReduce
-           (coll-reduce [_ f##]
-             ~(if (zero? cardinality)
-                `(f##)
-                (reduce
-                  (fn [form field]
-                    `(f## ~form ~field))
-                  (first fields)
-                  (rest fields))))
-           (coll-reduce [_ f## start##]
-             ~(if (zero? cardinality)
-                `(f## start##)
-                (reduce
-                  (fn [form field]
-                    `(f## ~form ~field))
-                  `start##
-                  fields)))
-
+           ~@(let [reduce-form (fn [val elements]
+                                 `(let [x## ~val]
+                                    ~(reduce
+                                       (fn [form field]
+                                         `(let [x## (f## x## ~field)]
+                                            (if (reduced? x##)
+                                              @x##
+                                              ~form)))
+                                       `x##
+                                       (reverse elements))))]
+               `(p/InternalReduce
+                  (internal-reduce [_ f## start##]
+                    ~(if (zero? cardinality)
+                       `start##
+                       (reduce-form `start## fields)))
+                  
+                  p/CollReduce
+                  (coll-reduce [_ f##]
+                    ~(if (zero? cardinality)
+                       `(f##)
+                       (reduce-form (first fields) (rest fields))))
+                  (coll-reduce [_ f## start##]
+                    ~(if (zero? cardinality)
+                       `start##
+                       (reduce-form `start## fields)))))
+           
            (toString [_]
              (str "[" ~@(->> fields (map (fn [f] `(pr-str ~f))) (interpose " ")) "]")))
 
@@ -356,9 +351,11 @@
                             (fn [n] `(. ~(with-meta `t## {:tag (str "Tuple" idx)}) ~(symbol (str "e" n))))
                             (range idx))
                         x##
-                        nil))))
+                        (meta t##)))))
                (range 6))
-           6 (conj (clojure.lang.PersistentVector/create ^clojure.lang.ISeq t##) x##)
+           6 (with-meta
+               (conj (clojure.lang.PersistentVector/create (seq t##)) x##)
+               (meta t##))
            )))))
 
 (defn tuple
