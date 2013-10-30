@@ -5,7 +5,7 @@ A tuple behaves exactly like a Clojure vector.  However, compared lists and vect
 ## Usage
 
 ```clj
-[clj-tuple "0.1.3"]
+[clj-tuple "0.1.4"]
 ```
 
 ```clj
