@@ -470,7 +470,7 @@
                   (.nth v## (+ start## 3))
                   (.nth v## (+ start## 4))
                   (.nth v## (+ start## 5)))
-                (new ~'VectorSeq (inc start##) end## v## mta##))
+                (new ~'VectorSeq start## (dec end##) v## mta##))
               (throw (IllegalArgumentException. "Cannot pop from an empty vector.")))))
 
         (nth [_ idx## not-found##]
