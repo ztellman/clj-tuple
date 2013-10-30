@@ -65,6 +65,7 @@
     (RuntimeException.
       (str "Wrong number of args (" actual ")"))))
 
+;; specific cardinality tuples
 (defmacro ^:private def-tuple [name dec-name cardinality]
   (let [fields (map
                  #(symbol (str "e" %))
@@ -149,7 +150,7 @@
                 `(and (number? k##)
                    (<= 0 k## ~(dec cardinality)))))
            (entryAt [_ k##]
-             (let [v# ~(lookup `(int k##))]
+             (when-let [v# ~(lookup `(int k##))]
                (MapEntry. k## v#)))
            (assoc [this# k# v##]
              (case (int k#)
@@ -327,7 +328,185 @@
              (str "[" ~@(->> fields (map (fn [f] `(pr-str ~f))) (interpose " ")) "]")))
 
          (defmethod print-method ~name [o# ^java.io.Writer w#]
+           (.write w# (str o#)))
+
+         (defmethod print-method ~name [o# ^java.io.Writer w#]
            (.write w# (str o#)))))))
+
+;; hacky workaround for the fact that PersistentVector isn't an ISeq, so we can't cleanly
+;; transition via conj from a tuple to a vector.
+(let [lookup (fn this
+               ([idx]
+                  `(let [idx# ~idx]
+                     (if (< -1 idx# (- end## start##))
+                       (.nth v## (+ start## idx#))
+                       (throw (IndexOutOfBoundsException. (str idx#))))))
+               ([idx default]
+                  `(let [idx# ~idx
+                         default# ~default]
+                     (if (< -1 idx# (- end## start##))
+                       (.nth v## (+ start## idx#))
+                       default#))))]
+  (eval
+    (unify-gensyms
+      `(deftype ~'VectorSeq
+        [^long start## ^long end## ^clojure.lang.PersistentVector v## mta##]
+       
+        clojure.lang.IObj
+        (meta [_] mta##)
+        (withMeta [_ m#] (new ~'VectorSeq start## end## v## m#))
+       
+        java.util.concurrent.Callable
+        (call [this##]
+          (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
+           
+        java.lang.Runnable
+        (run [this##]
+          (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
+
+        clojure.lang.ILookup
+        (valAt [_ k##] ~(lookup `(int k##)))
+        (valAt [_ k## not-found##] ~(lookup `(int k##) `not-found##))
+       
+        clojure.lang.IFn
+        ~@(map
+            (fn [n]
+              `(~'invoke [this# ~@(repeat n '_)]
+                 (throw-arity ~n)))
+            (remove #{1} (range 0 21)))
+           
+        (invoke [_ idx##]
+          ~(lookup `(int idx##)))
+       
+        (applyTo [this## args##]
+          (let [cnt# (count args##)]
+            (if (= 1 cnt#)
+              ~(lookup `(int (first args##)))
+              (throw-arity cnt#))))
+
+        clojure.lang.IEditableCollection
+        (asTransient [_]
+          (loop [v# (transient []), idx# start##]
+            (if (== end## idx#)
+              v#
+              (recur (conj! v# (.nth v## idx#)) (inc idx#)))))
+
+        clojure.lang.Associative
+        clojure.lang.IPersistentVector
+        (count [this#] (- end## start##))
+        (length [this#] (- end## start##))
+           
+        (containsKey [_ k#]
+          (< -1 k# (- end## start##)))
+        (entryAt [_ k##]
+          (when-let [v# ~(lookup `(int k##))]
+            (MapEntry. k## v#)))
+        (assoc [this# k# v##]
+          (.assocN this# (int k#) v##))
+        (assocN [this# k# v#]
+          (new ~'VectorSeq start## end##
+            (.assocN ~(with-meta `v## {:tag "clojure.lang.IPersistentVector"})
+              (int (+ start## k#))
+              v#)
+            mta##))
+
+        java.util.Collection
+        (isEmpty [_] (== 0 (- end## start##)))
+        (iterator [_]
+          (let [^Collection l# (->> v##
+                                 seq
+                                 (drop start##)
+                                 (take (- end## start##)))]
+            (.iterator l#)))
+        (toArray [_]
+          (->> v##
+            seq
+            (drop start##)
+            (take (- end## start##))
+            to-array))
+        (size [_] (- end## start##))
+
+        clojure.lang.IPersistentCollection
+        clojure.lang.Indexed
+        clojure.lang.Sequential
+        clojure.lang.ISeq
+        clojure.lang.Seqable
+        java.util.List
+
+        (seq [this#] this#)
+        (empty [_]
+          (with-meta [] mta##))
+        (first [_]
+          (when (< 0 (- end## start##))
+            (.nth v## start##)))
+        (next [this##]
+          (when (< 1 (- end## start##))
+            (new ~'VectorSeq (inc start##) end## v## mta##)))
+        (more [this##]
+          (if-let [rst# (next this##)]
+            rst#
+            '()))
+        (cons [this# k#]
+          (new ~'VectorSeq start## (inc end##)
+            (.assocN ~(with-meta `v## {:tag "clojure.lang.IPersistentVector"}) end## k#)
+            mta##))
+        (peek [_]
+          (when (< 0 (- end## start##))
+            (.nth v## end##)))
+        (pop [_]
+          (if (< 0 (- end## start##))
+            (new ~'VectorSeq start## (dec end##) v## mta##)
+            (throw (IllegalArgumentException. "Cannot pop from an empty vector."))))
+
+        (nth [_ idx## not-found##]
+          ~(lookup `idx## `not-found##))
+        (nth [_ idx##]
+          ~(lookup `idx##))
+        (get [_ idx##]
+          ~(lookup `idx##))
+           
+        (equiv [this# x##]
+          (and
+            (sequential? x##)
+            (== (count this#) (count x##))
+            (loop [idx# start##, x# x##]
+              (if (== end## idx#)
+                true
+                (if (and x# (Util/equiv (.nth v## idx#) (first x#)))
+                  (recur (inc idx#) (rest x#))
+                  false)))))
+           
+        (equals [this# x##]
+          (and
+            (sequential? x##)
+            (== (count this#) (count x##))
+            (loop [idx# start##, x# x##]
+              (if (== end## idx#)
+                true
+                (if (and x# (Util/equals (.nth v## idx#) (first x#)))
+                  (recur (inc idx#) (rest x#))
+                  false)))))
+
+        Comparable
+        (compareTo [this# x##]
+          (let [cnt# (count x##)]
+            (if (== (- end## start##) cnt#)
+              (- (compare x## this#))
+              (- (- end## start##) cnt#))))
+           
+        (hashCode [_]
+          (loop [idx# start##, h# 1]
+            (if (== end## idx#)
+              h#
+              (recur (inc idx#) (+ (* 31 h#) (Util/hash (.nth v## idx#)))))))
+           
+        clojure.lang.IHashEq
+        (hasheq [_]
+          (loop [idx# start##, h# 1]
+            (if (== end## idx#)
+              h#
+              (recur (inc idx#) (+ (* 31 h#) (Util/hasheq (.nth v## idx#)))))))))))
+
 
 (def-tuple Tuple0 nil 0)
 (def-tuple Tuple1 Tuple0 1)
@@ -353,9 +532,20 @@
                         x##
                         (meta t##)))))
                (range 6))
-           6 (with-meta
-               (conj (clojure.lang.PersistentVector/create (seq t##)) x##)
-               (meta t##))
+           6 (let [^clojure.lang.Indexed t## t##]
+               (VectorSeq. 0 7
+                 (-> []
+                   transient
+                   (conj! (.nth t## 0))
+                   (conj! (.nth t## 1))
+                   (conj! (.nth t## 2))
+                   (conj! (.nth t## 3))
+                   (conj! (.nth t## 4))
+                   (conj! (.nth t## 5))
+                   (conj! (.nth t## 6))
+                   x##
+                   persistent!)
+                 (meta t##)))
            )))))
 
 (defn tuple
