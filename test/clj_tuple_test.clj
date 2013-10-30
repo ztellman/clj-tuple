@@ -14,6 +14,9 @@
 (deftest test-equivalency
   (check/assert-vector-like 1e4 (tuple) gen/int))
 
+(deftest ^:stress stress-test-equivalency
+  (check/assert-vector-like 1e5 (tuple) gen/int))
+
 (defmacro do-benchmark [description bench-form-fn]
   (let [bench-form-fn (eval bench-form-fn)]
     `(do

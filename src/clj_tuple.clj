@@ -328,9 +328,6 @@
              (str "[" ~@(->> fields (map (fn [f] `(pr-str ~f))) (interpose " ")) "]")))
 
          (defmethod print-method ~name [o# ^java.io.Writer w#]
-           (.write w# (str o#)))
-
-         (defmethod print-method ~name [o# ^java.io.Writer w#]
            (.write w# (str o#)))))))
 
 ;; hacky workaround for the fact that PersistentVector isn't an ISeq, so we can't cleanly
@@ -404,7 +401,7 @@
         (assoc [this# k# v##]
           (.assocN this# (int k#) v##))
         (assocN [this# k# v#]
-          (new ~'VectorSeq start## end##
+          (new ~'VectorSeq start## (if (= k# end##) (inc end##) end##)
             (.assocN ~(with-meta `v## {:tag "clojure.lang.IPersistentVector"})
               (int (+ start## k#))
               v#)
@@ -440,8 +437,17 @@
           (when (< 0 (- end## start##))
             (.nth v## start##)))
         (next [this##]
-          (when (< 1 (- end## start##))
-            (new ~'VectorSeq (inc start##) end## v## mta##)))
+          (let [cnt# (- end## start##)]
+            (when (< 1 cnt#)
+              (if (== 7 cnt#)
+                (tuple
+                  (.nth v## (+ start## 1))
+                  (.nth v## (+ start## 2))
+                  (.nth v## (+ start## 3))
+                  (.nth v## (+ start## 4))
+                  (.nth v## (+ start## 5))
+                  (.nth v## (+ start## 6)))
+                (new ~'VectorSeq (inc start##) end## v## mta##)))))
         (more [this##]
           (if-let [rst# (next this##)]
             rst#
@@ -454,9 +460,18 @@
           (when (< 0 (- end## start##))
             (.nth v## end##)))
         (pop [_]
-          (if (< 0 (- end## start##))
-            (new ~'VectorSeq start## (dec end##) v## mta##)
-            (throw (IllegalArgumentException. "Cannot pop from an empty vector."))))
+          (let [cnt# (- end## start##)]
+            (if (< 0 cnt#)
+              (if (== 7 cnt#)
+                (tuple
+                  (.nth v## start##)
+                  (.nth v## (+ start## 1))
+                  (.nth v## (+ start## 2))
+                  (.nth v## (+ start## 3))
+                  (.nth v## (+ start## 4))
+                  (.nth v## (+ start## 5)))
+                (new ~'VectorSeq (inc start##) end## v## mta##))
+              (throw (IllegalArgumentException. "Cannot pop from an empty vector.")))))
 
         (nth [_ idx## not-found##]
           ~(lookup `idx## `not-found##))
@@ -495,17 +510,22 @@
               (- (- end## start##) cnt#))))
            
         (hashCode [_]
-          (loop [idx# start##, h# 1]
-            (if (== end## idx#)
-              h#
-              (recur (inc idx#) (+ (* 31 h#) (Util/hash (.nth v## idx#)))))))
+          (unchecked-int
+            (loop [idx# start##, h# 1]
+              (if (== end## idx#)
+                h#
+                (recur (inc idx#) (+ (* 31 h#) (Util/hash (.nth v## idx#))))))))
            
         clojure.lang.IHashEq
         (hasheq [_]
-          (loop [idx# start##, h# 1]
-            (if (== end## idx#)
-              h#
-              (recur (inc idx#) (+ (* 31 h#) (Util/hasheq (.nth v## idx#)))))))))))
+          (unchecked-int
+            (loop [idx# start##, h# 1]
+              (if (== end## idx#)
+                h#
+                (recur (inc idx#) (+ (* 31 h#) (Util/hasheq (.nth v## idx#))))))))))))
+
+(defmethod print-method VectorSeq [o# ^java.io.Writer w#]
+  (.write w# (pr-str (vec o#))))
 
 
 (def-tuple Tuple0 nil 0)
@@ -542,8 +562,7 @@
                    (conj! (.nth t## 3))
                    (conj! (.nth t## 4))
                    (conj! (.nth t## 5))
-                   (conj! (.nth t## 6))
-                   x##
+                   (conj! x##)
                    persistent!)
                  (meta t##)))
            )))))
