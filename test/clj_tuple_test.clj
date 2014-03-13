@@ -4,12 +4,17 @@
     [clj-tuple :refer :all]
     [criterium.core :as c]
     [collection-check :as check]
-    [simple-check.generators :as gen])
+    [simple-check.generators :as gen]
+    [clojure.pprint :as pprint])
   (:import
     [java.util.concurrent
      ConcurrentHashMap]
     [java.util
      HashMap]))
+
+(deftest test-pprint-able
+  (is (= (with-out-str (pprint/pprint [1 2 3]))
+         (with-out-str (pprint/pprint (tuple 1 2 3))))))
 
 (deftest test-equivalency
   (check/assert-vector-like 1e4 (tuple) gen/int))
