@@ -1,6 +1,7 @@
 (ns clj-tuple
   (:require
-    [clojure.core.protocols :as p])
+   [clojure.core.protocols :as p]
+   clojure.pprint)
   (:import
     [clojure.lang
      Util
@@ -328,7 +329,10 @@
              (str "[" ~@(->> fields (map (fn [f] `(pr-str ~f))) (interpose " ")) "]")))
 
          (defmethod print-method ~name [o# ^java.io.Writer w#]
-           (.write w# (str o#)))))))
+           (.write w# (str o#)))
+
+         (defmethod clojure.pprint/simple-dispatch ~name [o#]
+           ((get-method clojure.pprint/simple-dispatch clojure.lang.IPersistentVector) o#))))))
 
 ;; hacky workaround for the fact that PersistentVector isn't an ISeq, so we can't cleanly
 ;; transition via conj from a tuple to a vector.
