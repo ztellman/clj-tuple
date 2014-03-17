@@ -150,9 +150,9 @@
                 1 `(= 0 k##)
                 `(and (number? k##)
                    (<= 0 k## ~(dec cardinality)))))
-           (entryAt [_ k##]
-             (when-let [v# ~(lookup `(int k##))]
-               (MapEntry. k## v#)))
+           (entryAt [this## k##]
+             (when (.containsKey this## k##)
+                 (MapEntry. k## ~(lookup `(int k##)))))
            (assoc [this# k# v##]
              (case (int k#)
                ~@(mapcat
