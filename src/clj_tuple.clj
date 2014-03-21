@@ -17,6 +17,11 @@
 
 ;;; utility functions appropriated from potemkin
 
+(defmacro compile-if [test then else]
+  (if (eval test)
+    then
+    else))
+
 (defn- walk
   "Like `clojure.walk/walk`, but preserves metadata."
   [inner outer form]
@@ -288,16 +293,21 @@
            clojure.lang.IHashEq
            (hasheq [_]
              ~(if (zero? cardinality)
-                1
-                `(unchecked-int
-                   ~(reduce
-                      (fn
-                        ([form]
-                           form)
-                        ([form x]
-                           `(+ (* 31 ~form) (Util/hasheq ~x))))
-                      1
-                      fields))))
+                (compile-if (resolve 'clojure.core/hash-ordered-coll)
+                            (clojure.lang.Murmur3/mixCollHash 1 0)
+                            1)
+                `(let [premix# (unchecked-int
+                                ~(reduce
+                                  (fn
+                                    ([form]
+                                       form)
+                                    ([form x]
+                                       `(+ (* 31 ~form) (Util/hasheq ~x))))
+                                  1
+                                  fields))]
+                   (compile-if (resolve 'clojure.core/hash-ordered-coll)
+                               (clojure.lang.Murmur3/mixCollHash premix# ~cardinality)
+                               premix#))))
 
            ~@(let [reduce-form (fn [val elements]
                                  `(let [x## ~val]
@@ -522,11 +532,14 @@
            
         clojure.lang.IHashEq
         (hasheq [_]
-          (unchecked-int
-            (loop [idx# start##, h# 1]
-              (if (== end## idx#)
-                h#
-                (recur (inc idx#) (+ (* 31 h#) (Util/hasheq (.nth v## idx#))))))))))))
+          (let [premix# (unchecked-int
+                         (loop [idx# start##, h# 1]
+                           (if (== end## idx#)
+                             h#
+                             (recur (inc idx#) (+ (* 31 h#) (Util/hasheq (.nth v## idx#)))))))]
+            (compile-if (resolve 'clojure.core/hash-ordered-coll)
+                        (clojure.lang.Murmur3/mixCollHash premix# (- end## start##))
+                        premix#)))))))
 
 (defmethod print-method VectorSeq [o# ^java.io.Writer w#]
   (.write w# (pr-str (vec o#))))

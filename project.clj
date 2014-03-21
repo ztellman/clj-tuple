@@ -5,7 +5,8 @@
   :dependencies []
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.5.1"]
                                   [criterium "0.4.1"]
-                                  [collection-check "0.1.1-SNAPSHOT"]]}}
+                                  [collection-check "0.1.3"]]}
+             :clj16 {:dependencies [[org.clojure/clojure "1.6.0-RC1"]]}}
   :global-vars {*warn-on-reflection* true}
   :test-selectors {:benchmark :benchmark
                    :stress :stress
