@@ -97,11 +97,11 @@
            clojure.lang.IObj
            (meta [_] mta##)
            (withMeta [_ m#] (new ~name ~@fields m#))
-           
+
            java.util.concurrent.Callable
            (call [this##]
              (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
-           
+
            java.lang.Runnable
            (run [this##]
              (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
@@ -109,17 +109,17 @@
            clojure.lang.ILookup
            (valAt [_ k##] ~(lookup `(int k##) nil))
            (valAt [_ k## not-found##] ~(lookup `(int k##) `not-found##))
-       
+
            clojure.lang.IFn
            ~@(map
              (fn [n]
                `(~'invoke [this# ~@(repeat n '_)]
                   (throw-arity ~n)))
              (remove #{1} (range 0 21)))
-           
+
            (invoke [_ idx##]
              ~(lookup `(int idx##)))
-       
+
            (applyTo [this## args##]
              (let [cnt# (count args##)]
                (if (= 1 cnt#)
@@ -129,10 +129,10 @@
            ~@(when (= 2 cardinality)
                `(IMapEntry
                   Map$Entry
-                  
+
                   (key [_] ~(first fields))
                   (getKey [_] ~(first fields))
-                  
+
                   (val [_] ~(second fields))
                   (getValue [_] ~(second fields))))
 
@@ -148,7 +148,7 @@
            clojure.lang.IPersistentVector
            (count [_] ~cardinality)
            (length [_] ~cardinality)
-           
+
            (containsKey [_ k##]
              ~(condp = cardinality
                 0 false
@@ -229,7 +229,7 @@
              ~(lookup `idx##))
            (get [_ idx##]
              ~(lookup `idx##))
-           
+
            (equiv [this# x##]
              (if (instance? ~name x##)
                ~(if (zero? cardinality)
@@ -243,7 +243,7 @@
                  (sequential? x##)
                  (== ~cardinality (count x##))
                  (Util/equiv x## this#))))
-           
+
            (equals [this# x##]
              (if (instance? ~name x##)
                ~(if (zero? cardinality)
@@ -276,7 +276,7 @@
                  (if (== ~cardinality cnt#)
                    (- (compare x## this#))
                    (- ~cardinality cnt#)))))
-           
+
            (hashCode [_]
              ~(if (zero? cardinality)
                 1
@@ -289,7 +289,7 @@
                            `(+ (* 31 ~form) (Util/hash ~x))))
                       1
                       fields))))
-           
+
            clojure.lang.IHashEq
            (hasheq [_]
              ~(if (zero? cardinality)
@@ -324,7 +324,7 @@
                     ~(if (zero? cardinality)
                        `start##
                        (reduce-form `start## fields)))
-                  
+
                   p/CollReduce
                   (coll-reduce [_ f##]
                     ~(if (zero? cardinality)
@@ -334,7 +334,7 @@
                     ~(if (zero? cardinality)
                        `start##
                        (reduce-form `start## fields)))))
-           
+
            (toString [_]
              (str "[" ~@(->> fields (map (fn [f] `(pr-str ~f))) (interpose " ")) "]")))
 
@@ -362,15 +362,15 @@
     (unify-gensyms
       `(deftype ~'VectorSeq
         [^long start## ^long end## ^clojure.lang.PersistentVector v## mta##]
-       
+
         clojure.lang.IObj
         (meta [_] mta##)
         (withMeta [_ m#] (new ~'VectorSeq start## end## v## m#))
-       
+
         java.util.concurrent.Callable
         (call [this##]
           (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
-           
+
         java.lang.Runnable
         (run [this##]
           (.invoke ~(with-meta `this## {:tag "clojure.lang.IFn"})))
@@ -378,17 +378,17 @@
         clojure.lang.ILookup
         (valAt [_ k##] ~(lookup `(int k##)))
         (valAt [_ k## not-found##] ~(lookup `(int k##) `not-found##))
-       
+
         clojure.lang.IFn
         ~@(map
             (fn [n]
               `(~'invoke [this# ~@(repeat n '_)]
                  (throw-arity ~n)))
             (remove #{1} (range 0 21)))
-           
+
         (invoke [_ idx##]
           ~(lookup `(int idx##)))
-       
+
         (applyTo [this## args##]
           (let [cnt# (count args##)]
             (if (= 1 cnt#)
@@ -406,7 +406,7 @@
         clojure.lang.IPersistentVector
         (count [this#] (- end## start##))
         (length [this#] (- end## start##))
-           
+
         (containsKey [_ k#]
           (< -1 k# (- end## start##)))
         (entryAt [_ k##]
@@ -493,7 +493,7 @@
           ~(lookup `idx##))
         (get [_ idx##]
           ~(lookup `idx##))
-           
+
         (equiv [this# x##]
           (and
             (sequential? x##)
@@ -504,7 +504,7 @@
                 (if (and x# (Util/equiv (.nth v## idx#) (first x#)))
                   (recur (inc idx#) (rest x#))
                   false)))))
-           
+
         (equals [this# x##]
           (and
             (sequential? x##)
@@ -522,14 +522,14 @@
             (if (== (- end## start##) cnt#)
               (- (compare x## this#))
               (- (- end## start##) cnt#))))
-           
+
         (hashCode [_]
           (unchecked-int
             (loop [idx# start##, h# 1]
               (if (== end## idx#)
                 h#
                 (recur (inc idx#) (+ (* 31 h#) (Util/hash (.nth v## idx#))))))))
-           
+
         clojure.lang.IHashEq
         (hasheq [_]
           (let [premix# (unchecked-int
@@ -553,7 +553,8 @@
 (def-tuple Tuple5 Tuple4 5)
 (def-tuple Tuple6 Tuple5 6)
 
-(eval
+;; because runtime eval causes issues on Android, apparently
+(defmacro def-conj-tuple []
   (unify-gensyms
     `(defn- conj-tuple [t## x##]
        (let [^clojure.lang.Counted t## t##]
@@ -583,6 +584,8 @@
                    persistent!)
                  (meta t##)))
            )))))
+
+(def-conj-tuple)
 
 (defn tuple
   "Returns a tuple which behaves like a vector, but is highly efficient for index lookups, hash
