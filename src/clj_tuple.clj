@@ -73,7 +73,8 @@
 
 ;; specific cardinality tuples
 (defmacro ^:private def-tuple [name dec-name cardinality]
-  (let [fields (map
+  (let [cardinality (long cardinality)
+        fields (map
                  #(symbol (str "e" %))
                  (range cardinality))
         other (with-meta `x## {:tag (str name)})
@@ -560,7 +561,7 @@
        (let [^clojure.lang.Counted t## t##]
          (case (.count t##)
            ~@(mapcat
-               (fn [idx]
+               (fn [^long idx]
                  (let [nm (symbol (str "Tuple" (inc idx)))]
                    `(~idx
                       (new ~nm

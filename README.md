@@ -7,7 +7,7 @@ A tuple behaves exactly like a Clojure vector.  However, compared to lists and v
 [![Build Status](https://travis-ci.org/ztellman/clj-tuple.png?branch=master)](https://travis-ci.org/ztellman/clj-tuple)
 
 ```clj
-[clj-tuple "0.1.6"]
+[clj-tuple "0.1.7"]
 ```
 
 ```clj

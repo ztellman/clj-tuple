@@ -1,9 +1,9 @@
-(defproject clj-tuple "0.1.6"
+(defproject clj-tuple "0.1.7"
   :description "Efficient small collections."
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies []
-  :profiles {:dev {:dependencies [[org.clojure/clojure "1.6.0"]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.7.0-alpha2"]
                                   [criterium "0.4.1"]
                                   [collection-check "0.1.3"]]}
              :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}}
