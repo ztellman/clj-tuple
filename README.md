@@ -1,22 +1,22 @@
-Often the lists we create have only a few elements in them.  This library provides a collection type, `tuple`, which is optimized for these cases.  
-
-A tuple behaves exactly like a Clojure vector.  However, compared to lists and vectors, a two element tuple is ~2-3x faster to create, destructure, calculate a hash, check for equality, and look up in a normal Java hash-map.  Some of these gains are amplified at larger sizes; a five element tuple is ~30x faster to create than a vector.  Tuples larger than six elements, however, simply turn into standard vectors.
+This library provides efficient implementations for small maps and vectors, discussed more in [this post](http://blog.factual.com/using-clojure-to-generate-java-to-reimplement-clojure).  This will eventually be merged into Clojure proper, but for now can be used by replacing `vector` with `clj-tuple/vector` and `map` with `clj-tuple/map`.
 
 ### usage
 
 [![Build Status](https://travis-ci.org/ztellman/clj-tuple.png?branch=master)](https://travis-ci.org/ztellman/clj-tuple)
 
 ```clj
-[clj-tuple "0.1.7"]
+[clj-tuple "0.1.8"]
 ```
 
 ```clj
-clj-tuple> (tuple 1 2 3)
+clj-tuple> (vector 1 2 3)
 [1 2 3]
+clj-tuple> (map 1 2 3 4)
+{1 2, 3 4}
 ```
 
 ### license
 
-Copyright © 2013 Zachary Tellman
+Copyright © 2015 Zachary Tellman
 
 Distributed under the MIT License
