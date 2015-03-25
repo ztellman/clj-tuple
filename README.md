@@ -11,7 +11,7 @@ This library provides efficient implementations for small maps and vectors, disc
 ```clj
 clj-tuple> (vector 1 2 3)
 [1 2 3]
-clj-tuple> (map 1 2 3 4)
+clj-tuple> (hash-map 1 2 3 4)
 {1 2, 3 4}
 ```
 
