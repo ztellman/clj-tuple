@@ -1,4 +1,4 @@
-This library provides efficient implementations for small maps and vectors, discussed more in [this post](http://blog.factual.com/using-clojure-to-generate-java-to-reimplement-clojure).  These implementations eventually be merged into Clojure proper, but for now can be used by replacing `vector` with `clj-tuple/vector` and `hash-map` with `clj-tuple/hash-map`.
+This library provides efficient implementations for small maps and vectors, discussed more in [this post](http://blog.factual.com/using-clojure-to-generate-java-to-reimplement-clojure).  These implementations will eventually be merged into Clojure proper, but for now can be used by replacing `vector` with `clj-tuple/vector` and `hash-map` with `clj-tuple/hash-map`.
 
 ### usage
 
@@ -11,7 +11,7 @@ This library provides efficient implementations for small maps and vectors, disc
 ```clj
 clj-tuple> (vector 1 2 3)
 [1 2 3]
-clj-tuple> (map 1 2 3 4)
+clj-tuple> (hash-map 1 2 3 4)
 {1 2, 3 4}
 ```
 
