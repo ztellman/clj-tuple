@@ -1,4 +1,4 @@
-(defproject clj-tuple "0.2.1"
+(defproject clj-tuple "0.2.2-SNAPSHOT"
   :description "Efficient small collections."
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
@@ -13,3 +13,4 @@
   :java-source-paths ["src"]
   :javac-options ["-target" "1.5" "-source" "1.5"]
   :jvm-opts ^:replace ["-server" "-Xmx500m" "-XX:NewSize=200m"])
+"compatibility "
