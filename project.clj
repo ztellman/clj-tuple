@@ -13,3 +13,4 @@
   :java-source-paths ["src"]
   :javac-options ["-target" "1.5" "-source" "1.5"]
   :jvm-opts ^:replace ["-server" "-Xmx500m" "-XX:NewSize=200m"])
+"compatibility "
