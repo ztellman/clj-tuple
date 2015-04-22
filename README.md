@@ -5,7 +5,7 @@ This library provides efficient implementations for small maps and vectors, disc
 [![Build Status](https://travis-ci.org/ztellman/clj-tuple.png?branch=master)](https://travis-ci.org/ztellman/clj-tuple)
 
 ```clj
-[clj-tuple "0.2.1]
+[clj-tuple "0.2.1"]
 ```
 
 ```clj
