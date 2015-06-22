@@ -57,3 +57,5 @@
          (if (empty? s)
            (persistent! r)
            (recur (conj! r (first s)) (rest s)))))))
+
+(def tuple vector)
